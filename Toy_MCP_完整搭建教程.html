@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toy MCP 完整搭建教程</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --card: #16213e;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --text: #e0e0e0;
+    --code: #0d1117;
+    --green: #7ec87e;
+    --warn: #f5c6a0;
+    --border: #2a2a4a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 {
+    text-align: center;
+    font-size: 2.2em;
+    color: var(--accent);
+    margin-bottom: 0.3em;
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 0.4em;
+  }
+  h2 {
+    font-size: 1.6em;
+    color: #f0c060;
+    margin: 2em 0 0.6em;
+    border-left: 4px solid #f0c060;
+    padding-left: 0.5em;
+  }
+  h3 {
+    font-size: 1.2em;
+    color: #6ec6f0;
+    margin: 1.5em 0 0.5em;
+  }
+  p, ul, ol { margin: 0.6em 0; }
+  ul, ol { padding-left: 1.8em; }
+  li { margin: 0.3em 0; }
+  a { color: #6ec6f0; }
+  code {
+    background: var(--code);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-family: "Fira Code", "Cascadia Code", "JetBrains Mono", monospace;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--code);
+    padding: 1.2em;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: "Fira Code", "Cascadia Code", "JetBrains Mono", monospace;
+    font-size: 0.85em;
+    line-height: 1.6;
+    border: 1px solid var(--border);
+    margin: 1em 0;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 1.5em;
+    margin: 1.2em 0;
+    border: 1px solid var(--border);
+  }
+  .note {
+    background: #1a2a1a;
+    border-left: 4px solid var(--green);
+    padding: 1em;
+    border-radius: 0 8px 8px 0;
+    margin: 1em 0;
+  }
+  .warn {
+    background: #2a2010;
+    border-left: 4px solid var(--warn);
+    padding: 1em;
+    border-radius: 0 8px 8px 0;
+    margin: 1em 0;
+  }
+  .arch {
+    text-align: center;
+    font-family: monospace;
+    background: var(--card);
+    padding: 1.5em;
+    border-radius: 10px;
+    line-height: 2.2;
+    font-size: 0.9em;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+  }
+  th, td {
+    padding: 0.6em 1em;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th { background: var(--accent2); color: var(--warn); }
+  .tag {
+    display: inline-block;
+    padding: 0.15em 0.6em;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-weight: bold;
+  }
+  .tag-vps { background: #2a4a6a; color: #6ec6f0; }
+  .tag-local { background: #4a2a4a; color: #f0a0e0; }
+  .tag-both { background: #3a4a2a; color: var(--green); }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
+  #toc { background: var(--card); padding: 1.5em; border-radius: 10px; }
+  #toc ol { list-style-type: decimal; }
+  #toc a { text-decoration: none; }
+  #toc a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1>🔧 Toy MCP 完整搭建教程</h1>
+<p style="text-align:center;color:#888;margin-bottom:2em">让 AI 通过 MCP 协议控制蓝牙玩具 · 双方案完整文档</p>
+
+<!-- ── TOC ── -->
+<div id="toc">
+<h3 style="margin-top:0">📑 目录</h3>
+<ol>
+  <li><a href="#overview">整体架构总览</a></li>
+  <li><a href="#prereq">前置准备</a></li>
+  <li>
+    <a href="#method1">方案一：ToyMCP — VPS + Web Bluetooth（标准设备）</a>
+    <ol>
+      <li><a href="#m1-arch">架构与原理</a></li>
+      <li><a href="#m1-vps">VPS 端：ToyMCP 服务</a></li>
+      <li><a href="#m1-html">手机端：蓝牙 Web 页面</a></li>
+      <li><a href="#m1-rikka">RikkaHub 配置</a></li>
+      <li><a href="#m1-debug">强度映射问题与修复</a></li>
+    </ol>
+  </li>
+  <li>
+    <a href="#method2">方案二：ToyADB — 笔记本 ADB 触控模拟（私有协议设备）</a>
+    <ol>
+      <li><a href="#m2-arch">架构与原理</a></li>
+      <li><a href="#m2-phone">手机端准备</a></li>
+      <li><a href="#m2-laptop">笔记本端：ADB + MCP 服务</a></li>
+      <li><a href="#m2-tailscale">Tailscale 远程连接</a></li>
+      <li><a href="#m2-hyperos">Xiaomi HyperOS 特别处理</a></li>
+      <li><a href="#m2-rikka">RikkaHub 配置</a></li>
+      <li><a href="#m2-safety">断电保护与 reconnect</a></li>
+    </ol>
+  </li>
+  <li><a href="#compare">两方案对照表</a></li>
+  <li><a href="#faq">常见问题</a></li>
+</ol>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════ OVERVIEW ═══════════ -->
+<h2 id="overview">1. 整体架构总览</h2>
+
+<p>本系统提供<strong>两条独立的 MCP 控制链路</strong>，分别应对不同蓝牙协议类型的玩具：</p>
+
+<div class="arch">
+┌──────────────────────────────────────────────────────────────┐
+│                       RikkaHub (AI)                          │
+│              toy_set_strength(50) / toy_stop()               │
+└─────────────┬────────────────────────────┬───────────────────┘
+              │                            │
+     <b>方案一: ToyMCP</b>              <b>方案二: ToyADB</b>
+     标准 BLE 玩具                    私有协议 BLE 玩具
+              │                            │
+     VPS :8897 (FastMCP)             笔记本 :8893 (FastMCP)
+     state.json 状态文件                 │
+              │                         ADB 无线 / Tailscale
+     手机 Chrome 打开 HTML               │
+     Web Bluetooth API                  手机官方 APP
+              │                        ADB input swipe 模拟触摸
+     直接发送 BLE 指令                   │
+              │                         APP → BLE 私有协议
+     ┌────────┴────────┐           ┌────┴────┐
+     │  Erica / FenXin │           │  B220   │
+     │  (Svakom 协议)  │           │(私有协议)│
+     └─────────────────┘           └─────────┘
+</div>
+
+<div class="note">
+  <strong>设计原则：</strong>两条链路完全隔离，互不干扰。各自有独立的 MCP 端口、进程和 systemd 守护。
+</div>
+
+<!-- ═══════════ PREREQS ═══════════ -->
+<h2 id="prereq">2. 前置准备</h2>
+
+<h3>2.1 方案一所需</h3>
+<ul>
+  <li>一台有公网 IP 的 VPS（或 Tailscale 可达的内网服务器）</li>
+  <li>Python 3.11+，已安装 <code>mcp</code> 和 <code>uvicorn</code> 包</li>
+  <li>一部支持 Web Bluetooth API 的手机（Chrome Android 或 Edge Android）</li>
+  <li>一个使用标准 Svakom BLE 协议的玩具</li>
+</ul>
+
+<h3>2.2 方案二所需</h3>
+<ul>
+  <li>一台 Linux 笔记本（本教程使用 Ubuntu 24.04），安装 <code>adb</code></li>
+  <li>一部 Android 手机（已开启开发者选项 + USB 调试 + USB 调试(安全设置)）</li>
+  <li>手机安装玩具的官方 APP 和 Tailscale</li>
+  <li>Python 3.11+，已安装 <code>mcp</code> 和 <code>uvicorn</code></li>
+</ul>
+
+<!-- ═══════════ METHOD 1 ═══════════ -->
+<h2 id="method1">3. 方案一：ToyMCP — VPS + Web Bluetooth</h2>
+<span class="tag tag-vps">VPS</span>
+<span class="tag tag-both">标准 BLE 协议</span>
+
+<h3 id="m1-arch">3.1 架构与原理</h3>
+
+<div class="arch">
+RikkaHub MCP 工具调用
+  ↓ Streamable HTTP (带 Session ID)
+VPS ToyMCP 服务 (FastMCP, port 8897)
+  ↓ 写入 state.json
+手机 Chrome HTML 页轮询
+  ↓ 检测 state 变化
+Web Bluetooth API → BLE GATT writeValue()
+  ↓
+玩具马达
+</div>
+
+<p>关键设计：VPS 不直接控制蓝牙——它只负责<b>维护一个状态文件</b>。手机上的 HTML 页面每 1 秒轮询这个文件，检测到变化后通过 Web Bluetooth API 向设备发送 BLE 指令。这样就绕过了「服务器没法直接操作蓝牙」的限制。</p>
+
+<h3 id="m1-vps">3.2 VPS 端：ToyMCP 服务</h3>
+
+<p>创建 <code>/opt/toy-mcp/server.py</code>：</p>
+
+<pre>#!/usr/bin/env python3
+"""ToyMCP v3: Standard BLE toy control via FastMCP + Streamable HTTP."""
+import json, os, time
+from mcp.server.fastmcp import FastMCP
+
+STATE_FILE = "/opt/toy-web/state.json"
+PORT = 8897
+
+if not os.path.exists(STATE_FILE):
+    with open(STATE_FILE, "w") as f:
+        json.dump({"cmd": "stop", "mode": 0, "intensity": 0, "updated_at": 0}, f)
+
+def _write_state(cmd: str, mode: int = 0, intensity: int = 0) -> None:
+    with open(STATE_FILE, "w") as f:
+        json.dump({
+            "cmd": cmd, "mode": mode, "intensity": intensity,
+            "updated_at": int(time.time() * 1000),
+        }, f)
+
+mcp = FastMCP("toy-mcp", host="0.0.0.0", port=PORT, streamable_http_path="/")
+
+@mcp.tool()
+def toy_scan() -> str:
+    """List available toys."""
+    return json.dumps({"toys": [{"name": "YourToy", "index": 0}]})
+
+@mcp.tool()
+def toy_connect(index: int = 0) -> str:
+    """Connect to a toy by index."""
+    return json.dumps({"status": "connected", "device": "YourToy", "index": index})
+
+@mcp.tool()
+def toy_set_strength(value: float) -> str:
+    """Set vibration strength 0-100."""
+    val = max(0, min(100, value))
+    _write_state("set", mode=1, intensity=val)
+    return json.dumps({"status": "ok", "strength": val})
+
+@mcp.tool()
+def toy_stop() -> str:
+    """Stop all vibration."""
+    _write_state("stop")
+    return json.dumps({"status": "stopped"})
+
+@mcp.tool()
+def toy_disconnect() -> str:
+    """Disconnect."""
+    _write_state("stop")
+    return json.dumps({"status": "disconnected"})
+
+if __name__ == "__main__":
+    mcp.run(transport="streamable-http")
+</pre>
+
+<p>Systemd 服务文件 <code>/etc/systemd/system/toy-mcp.service</code>：</p>
+
+<pre>[Unit]
+Description=ToyMCP Control Server (FastMCP)
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/toy-mcp
+ExecStart=/opt/mcp_venv/bin/python3 /opt/toy-mcp/server.py
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target</pre>
+
+<pre>systemctl daemon-reload
+systemctl enable --now toy-mcp</pre>
+
+<div class="note">
+  <strong>设计要点：</strong>
+  <code>streamable_http_path="/"</code> 让 MCP 端点直接在根路径，与旧版 HTTP 服务器兼容。
+  <code>intensity</code> 存储的是原始 0-100 值（非 mapped level），留给手机 HTML 做最终的 BLE 强度映射。
+</div>
+
+<h3 id="m1-html">3.3 手机端：蓝牙 Web 页面</h3>
+
+<p>将以下 HTML 部署到 VPS 的 <code>/opt/toy-web/index.html</code>（或 Nginx 静态目录），手机 Chrome 打开即可：</p>
+
+<pre>&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+&lt;meta charset="UTF-8"&gt;
+&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+&lt;title&gt;Toy Control&lt;/title&gt;
+&lt;/head&gt;
+&lt;body style="background:#1a1a1a;color:#f5c6a0;text-align:center;
+            padding-top:10vh;font-family:sans-serif;"&gt;
+&lt;h1 id="status"&gt;点击「扫描」连接设备&lt;/h1&gt;
+&lt;button id="scanBtn" style="padding:16px 32px;font-size:18px;
+    background:#f5c6a0;color:#1a1a1a;border:none;border-radius:8px;"&gt;
+  🔍 扫描新设备
+&lt;/button&gt;
+&lt;div id="devList"&gt;&lt;/div&gt;
+
+&lt;script&gt;
+const STATE_URL = 'http://YOUR_VPS_IP:8896/state';
+window.devices = [];
+let lastUpdatedAt = 0;
+
+/* Map 0-100 strength to BLE intensity (0-255) with perceptible steps */
+function mapIntensity(v) {
+    if (v <= 0) return 0;
+    if (v <= 20) return 50;   // gentle
+    if (v <= 40) return 100;  // moderate
+    if (v <= 60) return 160;  // strong
+    if (v <= 80) return 210;  // very strong
+    return 255;               // maximum
+}
+
+async function sendAll(intensity) {
+    const i = mapIntensity(intensity);
+    /* Svakom protocol: CMD 0x55 0x04, mode 0x01, intensity byte, end byte 0xAA */
+    const data = new Uint8Array([0x55, 0x04, 0x00, 0x00, 0x01, i, 0xAA]);
+    for (const d of window.devices) {
+        try { await d.writeChar.writeValue(data); } catch(e) {}
+    }
+}
+async function stopAll() {
+    const data = new Uint8Array([0x55, 0x04, 0x00, 0x00, 0x00, 0x00, 0xAA]);
+    for (const d of window.devices) {
+        try { await d.writeChar.writeValue(data); } catch(e) {}
+    }
+}
+
+async function connectOne() {
+    document.getElementById('status').textContent = '扫描中...';
+    const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
+    });
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+    const chars = await service.getCharacteristics();
+    let wc = null;
+    for (const c of chars) {
+        if (c.properties.writeWithoutResponse || c.properties.write) {
+            wc = c; break;
+        }
+    }
+    const entry = { name: device.name, writeChar: wc, device };
+    window.devices.push(entry);
+    device.addEventListener('gattserverdisconnected', () => {
+        window.devices = window.devices.filter(d => d.device !== device);
+        updateUI();
+    });
+    updateUI();
+}
+
+function updateUI() {
+    const n = window.devices.length;
+    document.getElementById('status').textContent =
+        n > 0 ? '已连接 ' + n + ' 个设备' : '全部断开 - 点击重连';
+    document.getElementById('status').style.color = n > 0 ? '#7ec87e' : '#f5c6a0';
+}
+
+document.getElementById('scanBtn').addEventListener('click', connectOne);
+
+let lastCmd = null;
+setInterval(async () => {
+    if (window.devices.length === 0) return;
+    try {
+        const res = await fetch(STATE_URL);
+        const state = await res.json();
+        if (state.updated_at > lastUpdatedAt) {
+            lastUpdatedAt = state.updated_at;
+            if (state.cmd === 'stop') { lastCmd = null; await stopAll(); }
+            else if (state.cmd === 'set') {
+                lastCmd = state.intensity || 0;
+                await sendAll(lastCmd);
+            }
+        }
+    } catch(e) {}
+}, 1000);
+
+/* Periodic keep-alive resend */
+setInterval(async () => {
+    if (lastCmd !== null && window.devices.length > 0) {
+        await sendAll(lastCmd);
+    }
+}, 1400);
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+}
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+
+<div class="warn">
+  <strong>⚠️ HTTPS 注意：</strong> Web Bluetooth API 要求页面通过 HTTPS 访问（localhost 除外）。
+  如果 VPS 通过 Tailscale 暴露，可以用 <code>tailscale serve</code> 提供 TLS 证书；
+  或者手机 Chrome 访问 <code>http://&lt;vps_lan_ip&gt;:8895/</code>（局域网 HTTP 对 Bluetooth 可用）。
+</div>
+
+<div class="note">
+  <strong>多设备支持：</strong> 页面支持连接多个玩具。每个设备独立 BLE GATT 连接，收到强度指令时同时向所有已连接设备发送。
+</div>
+
+<h3 id="m1-rikka">3.4 RikkaHub 配置</h3>
+
+<table>
+  <tr><th>配置项</th><th>值</th></tr>
+  <tr><td>名称</td><td>ToyMCP</td></tr>
+  <tr><td>URL</td><td><code>http://YOUR_VPS_IP:8897/</code></td></tr>
+  <tr><td>传输协议</td><td>Streamable HTTP</td></tr>
+</table>
+
+<p>可用工具：<code>toy_scan</code>、<code>toy_connect</code>、<code>toy_set_strength</code>、<code>toy_stop</code>、<code>toy_disconnect</code></p>
+
+<h3 id="m1-debug">3.5 强度映射问题与修复</h3>
+
+<p><strong>现象：</strong>AI 调用 <code>toy_set_strength(10)</code> 和 <code>toy_set_strength(100)</code> 体感无区别。</p>
+
+<p><strong>根因：</strong>VPS 端曾将 0-100 映射为 level 1-5 再存 state.json，HTML 再将 1-5 线性映射到 0-255（1→3, 5→13），差异仅 10 个 BLE 单位，马达驱动无感知。</p>
+
+<p><strong>修复：</strong></p>
+<ol>
+  <li>VPS 端存储<strong>原始 0-100</strong> 值到 state.json</li>
+  <li>HTML 端使用<strong>分段映射</strong>：0→0, 1-20→50, 21-40→100, 41-60→160, 61-80→210, 81-100→255</li>
+  <li>10% → BLE 50，100% → BLE 255，差异 205 个单位，体感显著</li>
+</ol>
+
+
+<!-- ═══════════ METHOD 2 ═══════════ -->
+<h2 id="method2">4. 方案二：ToyADB — 笔记本 ADB 触控模拟</h2>
+<span class="tag tag-local">笔记本</span>
+<span class="tag tag-both">私有 BLE 协议</span>
+
+<h3 id="m2-arch">4.1 架构与原理</h3>
+
+<div class="arch">
+RikkaHub MCP 工具调用
+  ↓ Streamable HTTP
+笔记本 ToyADB 服务 (FastMCP, port 8893)
+  ↓ ADB 无线 (LAN 或 Tailscale)
+手机 ADB 服务
+  ↓ adb shell input swipe X Y X Y
+玩具官方 APP（界面显示滑块）
+  ↓ APP 内置 BLE 私有协议
+玩具马达
+</div>
+
+<p>核心思路：<strong>不对私有 BLE 协议进行逆向</strong>，而是通过 ADB 模拟手指在官方 APP 上滑动强度条，让 APP 替我们发送正确的 BLE 指令。</p>
+
+<h3 id="m2-phone">4.2 手机端准备</h3>
+
+<ol>
+  <li>打开 <strong>开发者选项</strong>：设置 → 关于手机 → 连点 MIUI 版本号 7 次</li>
+  <li>开启 <strong>USB 调试</strong></li>
+  <li>开启 <strong>USB 调试（安全设置）</strong>——小米/HyperOS 必备，否则 ADB input 会被拦截</li>
+  <li>安装玩具官方 APP，打开并确认强度调节滑条正常显示</li>
+  <li>USB 线连接笔记本一次，手机上弹窗勾选「一律允许」并确认</li>
+  <li>笔记本执行 <code>adb tcpip 5555</code> 开启 WiFi ADB 模式</li>
+  <li>此后拔掉 USB，全程走 WiFi</li>
+</ol>
+
+<p>取滑条坐标：在 APP 滑条界面上，用 ADB 截图或用触控位置开发者选项确定 0% 和 100% 对应的屏幕 Y 坐标。</p>
+
+<pre>
+# 滑条坐标示例（需根据具体设备和 APP 实测校准）
+0%   → Y = 1605（低端）
+100% → Y = 967 （高端）
+范围 638 像素，X 中心 ≈ 600
+</pre>
+
+<h3 id="m2-laptop">4.3 笔记本端：ToyADB 服务</h3>
+
+<p>安装依赖：</p>
+<pre>sudo apt-get install adb
+pip3 install mcp uvicorn --break-system-packages</pre>
+
+<p>创建 <code>/home/&lt;user&gt;/toyadb_server.py</code>：</p>
+
+<pre>#!/usr/bin/env python3
+"""ToyADB MCP: Control proprietary BLE toy via ADB touch simulation."""
+import json, subprocess, time
+from mcp.server.fastmcp import FastMCP
+
+PORT = 8893
+Y_MIN = 967   # 100% = top
+Y_MAX = 1605  # 0%   = bottom
+X_CENTER = 600
+PHONE_LAN = "192.168.x.x:5555"        # 局域网 IP
+PHONE_TAILSCALE = "100.x.x.x:5555"    # Tailscale IP (外出时)
+
+_last_xiaomi_unblocked = False
+
+def _adb_device() -> str | None:
+    """Get ADB device, preferring WiFi. Auto-reconnect on drop."""
+    try:
+        result = subprocess.run(
+            ["adb", "devices"], capture_output=True, text=True, timeout=5)
+        wifi_device = None
+        usb_device = None
+        for line in result.stdout.strip().split("\n")[1:]:
+            if "\tdevice" not in line: continue
+            serial = line.split("\t")[0]
+            if ":" in serial: wifi_device = serial
+            else: usb_device = serial
+
+        # WiFi gone but USB present → re-enable TCP mode
+        if not wifi_device and usb_device:
+            subprocess.run(["adb", "-s", usb_device, "tcpip", "5555"],
+                           capture_output=True, text=True, timeout=8)
+            time.sleep(1)
+            for addr in [PHONE_LAN, PHONE_TAILSCALE]:
+                subprocess.run(["adb", "connect", addr],
+                               capture_output=True, text=True, timeout=5)
+
+        # Completely gone → try reconnect
+        if not wifi_device:
+            for addr in [PHONE_LAN, PHONE_TAILSCALE]:
+                subprocess.run(["adb", "connect", addr],
+                               capture_output=True, text=True, timeout=5)
+
+        return wifi_device or usb_device
+    except Exception:
+        return None
+
+def _ensure_xiaomi_unblocked() -> None:
+    """Disable HyperOS touch blocking."""
+    global _last_xiaomi_unblocked
+    if _last_xiaomi_unblocked: return
+    device = _adb_device()
+    if not device: return
+    subprocess.run(["adb", "-s", device, "shell", "settings",
+                    "put", "global", "block_untrusted_touches", "0"],
+                   capture_output=True, text=True, timeout=5)
+    _last_xiaomi_unblocked = True
+
+def _strength_to_y(value: float) -> int:
+    v = max(0, min(100, value))
+    return Y_MAX - int(v / 100.0 * (Y_MAX - Y_MIN))
+
+def _adb_tap(y_target: int) -> bool:
+    device = _adb_device()
+    if not device: return False
+    _ensure_xiaomi_unblocked()
+    x, dur = X_CENTER, 100
+    r = subprocess.run(
+        ["adb", "-s", device, "shell", "input", "swipe",
+         str(x), str(y_target), str(x), str(y_target), str(dur)],
+        capture_output=True, text=True, timeout=10)
+    return r.returncode == 0
+
+mcp = FastMCP("toyadb", host="0.0.0.0", port=PORT, streamable_http_path="/")
+
+@mcp.tool()
+def toyadb_status() -> str:
+    """Check ADB connection status."""
+    d = _adb_device()
+    return json.dumps({"connected": bool(d), "device": d or "none"})
+
+@mcp.tool()
+def toyadb_set_strength(value: float) -> str:
+    """Set strength 0-100 via ADB touch on official app."""
+    y = _strength_to_y(value)
+    ok = _adb_tap(y)
+    return json.dumps({"status": "ok" if ok else "error",
+                       "strength": value, "y_target": y})
+
+@mcp.tool()
+def toyadb_stop() -> str:
+    """Stop vibration (tap bottom = 0%)."""
+    _adb_tap(Y_MAX)
+    return json.dumps({"status": "stopped"})
+
+@mcp.tool()
+def toyadb_mode(mode_name: str) -> str:
+    """Switch mode: A (伸缩), B (吮吸), C (震动). Coordinates may need calibration."""
+    modes = {"A": (200, 2050), "B": (540, 2050), "C": (880, 2050)}
+    m = mode_name.upper().strip()
+    if m not in modes:
+        return json.dumps({"status": "error", "message": f"Unknown mode '{m}'. Use A/B/C."})
+    device = _adb_device()
+    x, y = modes[m]
+    subprocess.run(["adb", "-s", device, "shell", "input", "tap",
+                    str(x), str(y)], capture_output=True, text=True, timeout=5)
+    return json.dumps({"status": "ok", "mode": m})
+
+if __name__ == "__main__":
+    mcp.run(transport="streamable-http")
+</pre>
+
+<p>Systemd 服务 <code>/etc/systemd/system/toyadb.service</code>：</p>
+
+<pre>[Unit]
+Description=ToyADB MCP Server - B220 Control via ADB
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/&lt;user&gt;/toyadb_server.py
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target</pre>
+
+<h3 id="m2-tailscale">4.4 Tailscale 远程连接</h3>
+
+<p>手机和笔记本都安装 Tailscale 后，ADB 可通过 Tailscale IP 直连：</p>
+
+<pre>adb connect 100.x.x.x:5555   # 手机 Tailscale IP</pre>
+
+<p>当手机离开家庭 WiFi 时，服务端自动尝试 Tailscale 地址作为备用通道。</p>
+
+<h3 id="m2-hyperos">4.5 Xiaomi HyperOS 特别处理</h3>
+
+<p>HyperOS 默认拦截 ADB 输入事件，需要：</p>
+
+<ol>
+  <li>开发者选项 → 打开 <strong>USB 调试（安全设置）</strong></li>
+  <li>服务端启动时自动执行：<code>adb shell settings put global block_untrusted_touches 0</code></li>
+</ol>
+
+<div class="warn">
+  <strong>注意：</strong> 手机重启后 WiFi ADB 模式会丢失。如果手机重启了，需要重新插 USB 一次，
+  笔记本会自动检测 USB 连接并执行 <code>adb tcpip 5555</code> 恢复 WiFi 模式，无需手动敲命令。
+</div>
+
+<h3 id="m2-rikka">4.6 RikkaHub 配置</h3>
+
+<table>
+  <tr><th>配置项</th><th>值</th></tr>
+  <tr><td>名称</td><td>ToyADB</td></tr>
+  <tr><td>URL</td><td><code>http://&lt;laptop_ip&gt;:8893/</code></td></tr>
+  <tr><td>传输协议</td><td>Streamable HTTP</td></tr>
+</table>
+
+<p>可用工具：<code>toyadb_status</code>、<code>toyadb_set_strength</code>、<code>toyadb_stop</code>、<code>toyadb_mode</code></p>
+
+<h3 id="m2-safety">4.7 断电保护与自动重连</h3>
+
+<p>服务端内置三级重连策略：</p>
+
+<table>
+  <tr><th>情况</th><th>处理方式</th></tr>
+  <tr><td>WiFi 短暂断连</td><td>自动 <code>adb connect</code> 重连</td></tr>
+  <tr><td>手机重启（ADB 忘掉 TCP 模式）</td><td>插 USB 自动检测 → <code>adb tcpip 5555</code> → 恢复 WiFi</td></tr>
+  <tr><td>手机在局域网外（出门）</td><td>自动切换 Tailscale IP 连接</td></tr>
+  <tr><td>HyperOS 拦截 input 命令</td><td>每次调用前自动执行 unblock 设置</td></tr>
+</table>
+
+
+<!-- ═══════════ COMPARISON ═══════════ -->
+<h2 id="compare">5. 两方案对照表</h2>
+
+<table>
+  <tr><th></th><th>方案一：ToyMCP</th><th>方案二：ToyADB</th></tr>
+  <tr><td>适用设备</td><td>标准 Svakom BLE 协议玩具</td><td>私有协议 BLE 玩具（如 B220）</td></tr>
+  <tr><td>运行位置</td><td>VPS 服务器</td><td>本地笔记本</td></tr>
+  <tr><td>手机角色</td><td>蓝牙中继（Web Bluetooth）</td><td>触控目标（ADB 模拟点击）</td></tr>
+  <tr><td>BLE 指令</td><td>直接从 HTML 页面发出</td><td>由官方 APP 代为发出</td></tr>
+  <tr><td>需要 USB</td><td>不需要</td><td>初次授权 + 每次重启后一次</td></tr>
+  <tr><td>手机后台要求</td><td>Chrome 页面保持在前台或后台</td><td>官方 APP 保持打开（可见滑块）</td></tr>
+  <tr><td>远程可用</td><td>✅ VPS 公网可达</td><td>✅ Tailscale 可达</td></tr>
+  <tr><td>MCP 端口</td><td>8897</td><td>8893</td></tr>
+  <tr><td>强度范围</td><td>BLE 0-255（分段映射）</td><td>屏幕 Y 坐标（线性插值）</td></tr>
+</table>
+
+
+<!-- ═══════════ FAQ ═══════════ -->
+<h2 id="faq">6. 常见问题</h2>
+
+<div class="card">
+<h3>Q: MCP 报 "Session not found" 怎么办？</h3>
+<p>服务重启后会话 ID 失效是正常的。FastMCP 的会话是内存存储，重启即清空。客户端（RikkaHub）检测到这个错误会自动重新 <code>initialize</code> 获取新 session ID。如果没自动恢复，在 RikkaHub 里手动刷新/重连该 MCP 源即可。</p>
+</div>
+
+<div class="card">
+<h3>Q: Streamable HTTP vs 普通 HTTP 有什么区别？</h3>
+<p>旧版 MCP 服务使用 Python <code>http.server</code>（HTTP/1.0），每次请求新建连接，不返回 <code>Mcp-Session-Id</code>。FastMCP + Streamable HTTP 使用 uvicorn（HTTP/1.1 + keep-alive），返回会话 ID，客户端初始化一次即可复用。这就是为什么升级前 RikkaHub 频繁重新初始化。</p>
+</div>
+
+<div class="card">
+<h3>Q: 为什么方案一要在 state.json 存原始 0-100 而不是 level 1-5？</h3>
+<p>手机 HTML 需要原始值来精确映射到 BLE 0-255 范围。如果 VPS 端先做了 coarser 映射（1-5），HTML 再映射一次（1→3, 5→13），两次量化导致差异极小，马达无法区分 10% 和 100%。</p>
+</div>
+
+<div class="card">
+<h3>Q: 如何校准 B220 的滑条坐标？</h3>
+<ol>
+  <li>打开官方 APP，进入强度调节界面</li>
+  <li>开启「开发者选项 → 指针位置」显示触控坐标</li>
+  <li>手指触摸滑块最低端 → 记录 Y 值</li>
+  <li>手指触摸滑块最高端 → 记录 Y 值</li>
+  <li>更新服务端代码中的 <code>Y_MIN</code> 和 <code>Y_MAX</code></li>
+</ol>
+</div>
+
+<div class="card">
+<h3>Q: 多个玩具同时用可以吗？</h3>
+<p>可以。方案一的 HTML 支持多设备同时连接（点扫描按钮可多次配对），每个设备独立 BLE 连接。方案二每次只能控制当前 APP 活跃的那一个设备（因为 ADB 触控是全局的）。如果两个方案并行，各自独立不冲突。</p>
+</div>
+
+<hr class="divider">
+
+<p style="text-align:center;color:#666;font-size:0.85em;margin-top:3em;">
+  文档版本 2026-07 · 代码片段中的 IP / Token 已脱敏 · 适用于分享和存档
+</p>
+
+</body>
+</html>
