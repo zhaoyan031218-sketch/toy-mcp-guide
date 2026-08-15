@@ -6,6 +6,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, FileResponse
 
 PORT = int(os.environ.get("PORT", 8080))  # Zeabur 会注入 PORT
+TOY_KEY = os.environ.get("TOY_KEY", "")   # 在 Zeabur 环境变量里设置密码；不设则不启用密码
 
 state = {"cmd": "stop", "mode": 0, "intensity": 0, "updated_at": 0}
 
@@ -16,7 +17,7 @@ def _write_state(cmd: str, mode: int = 0, intensity: float = 0) -> None:
     })
 
 mcp = FastMCP("toy-mcp", host="0.0.0.0", port=PORT,
-              streamable_http_path="/mcp")
+              streamable_http_path="/mcp-712067f5")
 
 @mcp.tool()
 def toy_scan() -> str:
@@ -49,6 +50,8 @@ def toy_disconnect() -> str:
 
 @mcp.custom_route("/state", methods=["GET"])
 async def get_state(request: Request):
+    if TOY_KEY and request.query_params.get("key") != TOY_KEY:
+        return JSONResponse({"error": "unauthorized"}, status_code=403)
     return JSONResponse(state)
 
 @mcp.custom_route("/", methods=["GET"])
