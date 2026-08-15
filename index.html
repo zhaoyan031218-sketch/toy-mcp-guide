@@ -7,15 +7,71 @@
 </head>
 <body style="background:#1a1a1a;color:#f5c6a0;text-align:center;
             padding-top:10vh;font-family:sans-serif;">
-<h1 id="status">点击「扫描」连接设备</h1>
-<button id="scanBtn" style="padding:16px 32px;font-size:18px;
-    background:#f5c6a0;color:#1a1a1a;border:none;border-radius:8px;">
-  🔍 扫描新设备
-</button>
-<div id="devList"></div>
+
+<!-- 密码门 -->
+<div id="gate">
+  <h1>🔒 请输入访问密码</h1>
+  <input id="pwInput" type="password" autocomplete="current-password"
+      style="padding:12px 16px;font-size:18px;border:none;border-radius:8px;
+             text-align:center;background:#2a2a2a;color:#f5c6a0;">
+  <br><br>
+  <button id="pwBtn" style="padding:12px 32px;font-size:18px;
+      background:#f5c6a0;color:#1a1a1a;border:none;border-radius:8px;">
+    进入
+  </button>
+  <p id="pwMsg" style="color:#e07a7a;min-height:1.2em;"></p>
+</div>
+
+<!-- 主界面 -->
+<div id="main" style="display:none;">
+  <h1 id="status">点击「扫描」连接设备</h1>
+  <button id="scanBtn" style="padding:16px 32px;font-size:18px;
+      background:#f5c6a0;color:#1a1a1a;border:none;border-radius:8px;">
+    🔍 扫描新设备
+  </button>
+  <div id="devList"></div>
+</div>
 
 <script>
-const STATE_URL = '/state';
+let TOY_KEY = localStorage.getItem('toy_key') || '';
+function stateUrl() { return '/state?key=' + encodeURIComponent(TOY_KEY); }
+
+function showMain() {
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('main').style.display = 'block';
+}
+function showGate(msg) {
+    document.getElementById('gate').style.display = 'block';
+    document.getElementById('main').style.display = 'none';
+    document.getElementById('pwMsg').textContent = msg || '';
+}
+
+async function tryUnlock(key) {
+    try {
+        const res = await fetch('/state?key=' + encodeURIComponent(key));
+        if (res.ok) {
+            TOY_KEY = key;
+            localStorage.setItem('toy_key', key);
+            showMain();
+            return true;
+        }
+    } catch(e) {}
+    return false;
+}
+
+document.getElementById('pwBtn').addEventListener('click', async () => {
+    const key = document.getElementById('pwInput').value;
+    if (!(await tryUnlock(key))) {
+        document.getElementById('pwMsg').textContent = '密码错误，请重试';
+    }
+});
+document.getElementById('pwInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('pwBtn').click();
+});
+
+/* 自动用上次保存的密码解锁 */
+tryUnlock(TOY_KEY).then(ok => { if (!ok) showGate(); });
+
 window.devices = [];
 let lastUpdatedAt = 0;
 
@@ -81,7 +137,13 @@ let lastCmd = null;
 setInterval(async () => {
     if (window.devices.length === 0) return;
     try {
-        const res = await fetch(STATE_URL);
+        const res = await fetch(stateUrl());
+        if (res.status === 403) {
+            /* 密码被修改，回到密码门 */
+            localStorage.removeItem('toy_key');
+            showGate('密码已失效，请重新输入');
+            return;
+        }
         const state = await res.json();
         if (state.updated_at > lastUpdatedAt) {
             lastUpdatedAt = state.updated_at;
